@@ -1,0 +1,50 @@
+{
+    "name": "botnetdobbs/laravel-luminous",
+    "description": "PHP 8 Attribute-driven OpenAPI 3.1 documentation for Laravel",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0|^12.0",
+        "illuminate/support": "^11.0|^12.0"
+    },
+    "suggest": {
+        "symfony/yaml": "Required for YAML export (php artisan luminous:export --format=yaml)"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.0",
+        "orchestra/testbench": "^9.0",
+        "phpunit/phpunit": "^11.0",
+        "symfony/yaml": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Botnetdobbs\\Luminous\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Botnetdobbs\\Luminous\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": ["Botnetdobbs\\Luminous\\LuminousServiceProvider"],
+            "aliases": {
+                "Luminous": "Botnetdobbs\\Luminous\\LuminousFacade"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "./vendor/bin/phpunit",
+        "test:coverage": "XDEBUG_MODE=coverage ./vendor/bin/phpunit --coverage-html coverage"
+    }
+}
