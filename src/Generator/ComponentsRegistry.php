@@ -34,7 +34,9 @@ class ComponentsRegistry
             );
         }
 
-        $this->schemas[$name] = $schema;
+        if (! isset($this->schemas[$name])) {
+            $this->schemas[$name] = $schema;
+        }
 
         return "#/components/schemas/{$name}";
     }

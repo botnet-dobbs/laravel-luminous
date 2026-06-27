@@ -17,19 +17,109 @@ class OpenApiGenerator
     public function generate(): array
     {
         $this->registry->reset();
+        $this->registerSharedSchemas();
 
         $paths = [];
+        $rawTags = [];
+
         foreach ($this->routeExtractor->extract() as $route) {
-            $paths[$route->path][$route->httpMethod] = $this->controllerExtractor->extract($route);
+            try {
+                $operation = $this->controllerExtractor->extract($route);
+                if (empty($operation)) {
+                    continue;
+                }
+                $paths[$route->path][$route->httpMethod] = $operation;
+                array_push($rawTags, ...($operation['tags'] ?? []));
+            } catch (\Error $e) {
+                throw $e;
+            } catch (\Exception $e) {
+                logger()->warning('Luminous: failed to extract route [{method} {path}]: {type}', [
+                    'method' => $route->httpMethod,
+                    'path' => $route->path,
+                    'type' => get_class($e),
+                ]);
+            }
         }
+
+        $paths = collect($paths)->sortKeys()->all();
+
+        $tags = collect($rawTags)
+            ->unique()
+            ->map(fn ($name) => ['name' => $name])
+            ->sortBy('name')
+            ->values()
+            ->all();
 
         return [
             'openapi' => '3.1.0',
-            'info' => [
-                'title' => $this->config['info']['title'] ?? 'Luminous API',
-                'version' => $this->config['info']['version'] ?? '1.0.0',
-            ],
+            'info' => $this->buildInfo(),
+            'servers' => $this->config['servers'] ?? [],
+            'tags' => $tags,
             'paths' => $paths,
+            'components' => $this->buildComponents(),
         ];
+    }
+
+    private function buildInfo(): array
+    {
+        $infoConfig = $this->config['info'] ?? [];
+
+        $info = [
+            'title' => $infoConfig['title'] ?? 'Luminous API',
+            'version' => $infoConfig['version'] ?? '1.0.0',
+        ];
+
+        if (! empty($infoConfig['description'])) {
+            $info['description'] = $infoConfig['description'];
+        }
+
+        $contact = collect($infoConfig['contact'] ?? [])->filter()->all();
+        if (! empty($contact)) {
+            $info['contact'] = $contact;
+        }
+
+        $license = collect($infoConfig['license'] ?? [])->filter()->all();
+        if (! empty($license)) {
+            $info['license'] = $license;
+        }
+
+        return $info;
+    }
+
+    private function registerSharedSchemas(): void
+    {
+        $this->registry->registerAnonymous('ErrorResponse', [
+            'type' => 'object',
+            'properties' => [
+                'code' => ['type' => 'string'],
+                'message' => ['type' => 'string'],
+                'request_id' => ['type' => 'string'],
+                'timestamp' => ['type' => 'string', 'format' => 'date-time'],
+                'details' => ['type' => 'object'],
+            ],
+        ]);
+
+        if ($this->config['include_pagination_schema'] ?? true) {
+            $this->registry->registerAnonymous('PaginationMeta', [
+                'type' => 'object',
+                'properties' => [
+                    'cursor' => ['type' => ['string', 'null']],
+                    'has_more' => ['type' => 'boolean'],
+                    'total' => ['type' => 'integer'],
+                ],
+            ]);
+        }
+    }
+
+    private function buildComponents(): array
+    {
+        $components = ['schemas' => $this->registry->all()];
+
+        $securitySchemes = $this->config['security_schemes'] ?? [];
+        if (! empty($securitySchemes)) {
+            $components['securitySchemes'] = $securitySchemes;
+        }
+
+        return $components;
     }
 }
