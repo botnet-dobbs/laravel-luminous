@@ -10,9 +10,10 @@ final class ApiComposedOf
         public readonly array $refs = [],
         public readonly ?int $forStatus = null,
     ) {
-        assert(
-            in_array($composition, ['oneOf', 'anyOf', 'allOf'], true),
-            "ApiComposedOf: \$composition must be 'oneOf', 'anyOf', or 'allOf', got '{$composition}'"
-        );
+        if (! in_array($composition, ['oneOf', 'anyOf', 'allOf'], true)) {
+            throw new \InvalidArgumentException(
+                "ApiComposedOf: \$composition must be 'oneOf', 'anyOf', or 'allOf', got '{$composition}'"
+            );
+        }
     }
 }

@@ -13,9 +13,10 @@ final class ApiExample
         public readonly int $status = 200,
         public readonly string $mediaType = 'application/json',
     ) {
-        assert(
-            in_array($type, ['request', 'response'], true),
-            "ApiExample: \$type must be 'request' or 'response', got '{$type}'"
-        );
+        if (! in_array($type, ['request', 'response'], true)) {
+            throw new \InvalidArgumentException(
+                "ApiExample: \$type must be 'request' or 'response', got '{$type}'"
+            );
+        }
     }
 }

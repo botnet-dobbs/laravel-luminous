@@ -3,11 +3,15 @@
 namespace Botnetdobbs\Luminous;
 
 use Botnetdobbs\Luminous\Extractors\ControllerExtractor;
+use Botnetdobbs\Luminous\Extractors\EnumExtractor;
+use Botnetdobbs\Luminous\Extractors\RequestExtractor;
+use Botnetdobbs\Luminous\Extractors\ResourceExtractor;
 use Botnetdobbs\Luminous\Extractors\RouteExtractor;
 use Botnetdobbs\Luminous\Generator\ComponentsRegistry;
 use Botnetdobbs\Luminous\Generator\OpenApiGenerator;
 use Botnetdobbs\Luminous\Http\Controllers\LuminousController;
 use Botnetdobbs\Luminous\Support\CacheManager;
+use Botnetdobbs\Luminous\Support\TypeMapper;
 use Botnetdobbs\Luminous\Support\YamlExporter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -25,11 +29,17 @@ class LuminousServiceProvider extends ServiceProvider
             $registry = $app->make(ComponentsRegistry::class);
             $routeExtractor = new RouteExtractor($config);
 
+            $enumExtractor = new EnumExtractor;
+            $typeMapper = new TypeMapper($enumExtractor);
+            $requestExtractor = new RequestExtractor($typeMapper, $registry, $enumExtractor);
+            $resourceExtractor = new ResourceExtractor($typeMapper, $registry, $enumExtractor);
+
             return new OpenApiGenerator(
                 config: $config,
                 routeExtractor: $routeExtractor,
                 controllerExtractor: new ControllerExtractor(
-                    registry: $registry,
+                    requestExtractor: $requestExtractor,
+                    resourceExtractor: $resourceExtractor,
                     config: $config,
                 ),
                 registry: $registry,
