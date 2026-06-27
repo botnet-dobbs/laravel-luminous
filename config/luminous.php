@@ -35,7 +35,8 @@ return [
     |
     | Example: LARADOC_MIDDLEWARE=auth,throttle:60,1
     |
-    | Leave blank to allow public access to the docs.
+    | For production, always set at minimum: LARADOC_MIDDLEWARE=auth
+    | Leave blank only for local development. Docs are publicly accessible otherwise.
     |
     */
     'middleware' => env('LARADOC_MIDDLEWARE')
@@ -190,7 +191,7 @@ return [
     'cache' => [
         'enabled' => env('LARADOC_CACHE', false),
         'ttl' => env('LARADOC_CACHE_TTL', 3600),
-        'key' => 'luminous:spec',
+        'key' => env('LARADOC_CACHE_KEY', 'luminous:spec'),
         'store' => env('LARADOC_CACHE_STORE', null),
     ],
 
@@ -206,7 +207,7 @@ return [
     |
     */
     'ui' => [
-        'persist_authorization' => true,
+        'persist_authorization' => false,
         'display_request_duration' => true,
         'default_models_expand_depth' => 1,
         'syntax_highlight_theme' => 'monokai',

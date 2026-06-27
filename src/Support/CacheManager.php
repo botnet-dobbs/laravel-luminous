@@ -31,6 +31,10 @@ class CacheManager
 
     public function flush(): void
     {
+        if (! config('luminous.cache.enabled')) {
+            return;
+        }
+
         $this->store()->forget(config('luminous.cache.key'));
     }
 }

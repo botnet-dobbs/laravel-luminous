@@ -19,7 +19,9 @@ class LuminousController extends Controller
 
     public function json(): JsonResponse
     {
-        return response()->json($this->getSpec());
+        return response()
+            ->json($this->getSpec())
+            ->header('X-Content-Type-Options', 'nosniff');
     }
 
     public function yaml(): Response
@@ -27,19 +29,31 @@ class LuminousController extends Controller
         try {
             $output = $this->yaml->export($this->getSpec());
 
-            return response($output, 200, ['Content-Type' => 'application/yaml; charset=utf-8']);
+            return response($output, 200, [
+                'Content-Type' => 'application/yaml; charset=utf-8',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
         } catch (\RuntimeException $e) {
-            return response($e->getMessage(), 501, ['Content-Type' => 'text/plain']);
+            logger()->warning('luminous: YAML export failed', ['error' => $e->getMessage()]);
+
+            return response(
+                'YAML export is unavailable. Run: composer require symfony/yaml',
+                501,
+                ['Content-Type' => 'text/plain']
+            );
         }
     }
 
     public function ui(): Response
     {
-        return response()->view('luminous::swagger-ui', [
-            'title' => config('luminous.info.title'),
-            'specUrl' => route('luminous.json'),
-            'uiConfig' => config('luminous.ui'),
-        ]);
+        return response()
+            ->view('luminous::swagger-ui', [
+                'title' => config('luminous.info.title'),
+                'specUrl' => route('luminous.json'),
+                'uiConfig' => config('luminous.ui'),
+            ])
+            ->header('X-Frame-Options', 'SAMEORIGIN')
+            ->header('X-Content-Type-Options', 'nosniff');
     }
 
     private function getSpec(): array

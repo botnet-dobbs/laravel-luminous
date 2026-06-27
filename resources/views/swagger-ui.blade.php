@@ -16,20 +16,20 @@
 <script src="{{ $uiConfig['cdn']['swagger_ui'] }}/swagger-ui-bundle.js"></script>
 <script src="{{ $uiConfig['cdn']['swagger_ui'] }}/swagger-ui-standalone-preset.js"></script>
 <script>
-    window.onload = function () {
+    document.addEventListener('DOMContentLoaded', function () {
         SwaggerUIBundle({
-            url:                      "{{ $specUrl }}",
+            url:                      @json($specUrl),
             dom_id:                   '#swagger-ui',
             presets:                  [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
             layout:                   'StandaloneLayout',
             persistAuthorization:     {{ $uiConfig['persist_authorization'] ? 'true' : 'false' }},
             displayRequestDuration:   {{ $uiConfig['display_request_duration'] ? 'true' : 'false' }},
-            defaultModelsExpandDepth: {{ $uiConfig['default_models_expand_depth'] }},
+            defaultModelsExpandDepth: {{ (int) $uiConfig['default_models_expand_depth'] }},
             tryItOutEnabled:          {{ $uiConfig['try_it_out_enabled'] ? 'true' : 'false' }},
-            syntaxHighlight:          { theme: "{{ $uiConfig['syntax_highlight_theme'] }}" },
+            syntaxHighlight:          { theme: @json($uiConfig['syntax_highlight_theme']) },
             validatorUrl:             null,
         });
-    };
+    });
 </script>
 </body>
 </html>
