@@ -2,6 +2,8 @@
 
 namespace Botnetdobbs\Luminous;
 
+use Botnetdobbs\Luminous\Commands\ExportCommand;
+use Botnetdobbs\Luminous\Commands\GenerateCommand;
 use Botnetdobbs\Luminous\Extractors\ControllerExtractor;
 use Botnetdobbs\Luminous\Extractors\EnumExtractor;
 use Botnetdobbs\Luminous\Extractors\RequestExtractor;
@@ -68,6 +70,12 @@ class LuminousServiceProvider extends ServiceProvider
             $this->loadRoutes();
         }
 
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                GenerateCommand::class,
+                ExportCommand::class,
+            ]);
+        }
     }
 
     private function loadRoutes(): void
