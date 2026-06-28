@@ -55,7 +55,8 @@ class ExportCommand extends Command
             if (! $this->validateOutputPath($outputPath)) {
                 return self::FAILURE;
             }
-            if (file_put_contents($outputPath, $output, LOCK_EX) === false) {
+            $resolvedPath = realpath(dirname($outputPath)).DIRECTORY_SEPARATOR.basename($outputPath);
+            if (file_put_contents($resolvedPath, $output, LOCK_EX) === false) {
                 $this->error("Could not write to {$outputPath}");
 
                 return self::FAILURE;

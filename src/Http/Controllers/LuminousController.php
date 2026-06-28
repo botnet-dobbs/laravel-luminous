@@ -46,11 +46,17 @@ class LuminousController extends Controller
 
     public function ui(): Response
     {
+        $uiConfig = config('luminous.ui');
+        $cdnBase = $uiConfig['cdn']['swagger_ui'] ?? '';
+        if (! str_starts_with((string) $cdnBase, 'https://')) {
+            $uiConfig['cdn']['swagger_ui'] = 'https://unpkg.com/swagger-ui-dist@5.18.2';
+        }
+
         return response()
             ->view('luminous::swagger-ui', [
                 'title' => config('luminous.info.title'),
                 'specUrl' => route('luminous.json'),
-                'uiConfig' => config('luminous.ui'),
+                'uiConfig' => $uiConfig,
             ])
             ->header('X-Frame-Options', 'SAMEORIGIN')
             ->header('X-Content-Type-Options', 'nosniff');

@@ -304,6 +304,24 @@ class ControllerExtractor
                     ? ['type' => 'array', 'items' => $resourceSchema]
                     : $resourceSchema;
 
+                if ($this->config['wrap_responses'] ?? false) {
+                    $key = $this->config['response_wrapper_key'] ?? 'data';
+                    if (empty($key) || ! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', (string) $key)) {
+                        logger()->warning('luminous: invalid response_wrapper_key; falling back to "data"');
+                        $key = 'data';
+                    }
+                    $wrapped = [
+                        'type' => 'object',
+                        'properties' => [$key => $schema],
+                        'required' => [$key],
+                    ];
+                    if ($response->paginated && ($this->config['include_pagination_schema'] ?? true)) {
+                        $wrapped['properties']['pagination'] = ['$ref' => '#/components/schemas/PaginationMeta'];
+                        $wrapped['required'][] = 'pagination';
+                    }
+                    $schema = $wrapped;
+                }
+
                 $responses[$status] = [
                     'description' => $response->description,
                     'content' => [

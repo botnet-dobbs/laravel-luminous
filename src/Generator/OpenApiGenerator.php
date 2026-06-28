@@ -30,9 +30,7 @@ class OpenApiGenerator
                 }
                 $paths[$route->path][$route->httpMethod] = $operation;
                 array_push($rawTags, ...($operation['tags'] ?? []));
-            } catch (\Error $e) {
-                throw $e;
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 logger()->warning('Luminous: failed to extract route [{method} {path}]: {type}', [
                     'method' => $route->httpMethod,
                     'path' => $route->path,
