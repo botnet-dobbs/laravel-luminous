@@ -7,12 +7,12 @@ return [
     | Enable / Disable
     |--------------------------------------------------------------------------
     |
-    | Set LARADOC_ENABLED=false in production to hide the docs entirely.
+    | Set LUMINOUS_ENABLED=false in production to hide the docs entirely.
     | All three routes (/docs, /docs/openapi.json, /docs/openapi.yaml)
     | return 404 when disabled.
     |
     */
-    'enabled' => env('LARADOC_ENABLED', true),
+    'enabled' => env('LUMINOUS_ENABLED', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -23,7 +23,7 @@ return [
     | Defaults to "docs", so the UI is at /docs and the spec at /docs/openapi.json.
     |
     */
-    'path' => env('LARADOC_PATH', 'docs'),
+    'path' => env('LUMINOUS_PATH', 'docs'),
 
     /*
     |--------------------------------------------------------------------------
@@ -33,14 +33,14 @@ return [
     | Middleware applied to all three docs routes. Accepts a comma-separated
     | list of middleware names in the environment variable.
     |
-    | Example: LARADOC_MIDDLEWARE=auth,throttle:60,1
+    | Example: LUMINOUS_MIDDLEWARE=auth,throttle:60,1
     |
-    | For production, always set at minimum: LARADOC_MIDDLEWARE=auth
+    | For production, always set at minimum: LUMINOUS_MIDDLEWARE=auth
     | Leave blank only for local development. Docs are publicly accessible otherwise.
     |
     */
-    'middleware' => env('LARADOC_MIDDLEWARE')
-        ? array_map('trim', explode(',', env('LARADOC_MIDDLEWARE')))
+    'middleware' => env('LUMINOUS_MIDDLEWARE')
+        ? array_map('trim', explode(',', env('LUMINOUS_MIDDLEWARE')))
         : [],
 
     /*
@@ -52,17 +52,17 @@ return [
     |
     */
     'info' => [
-        'title' => env('LARADOC_TITLE', 'Luminous API'),
-        'version' => env('LARADOC_VERSION', '1.0.0'),
-        'description' => env('LARADOC_DESCRIPTION', ''),
+        'title' => env('LUMINOUS_TITLE', 'Luminous API'),
+        'version' => env('LUMINOUS_VERSION', '1.0.0'),
+        'description' => env('LUMINOUS_DESCRIPTION', ''),
         'contact' => [
-            'name' => env('LARADOC_CONTACT_NAME', ''),
-            'email' => env('LARADOC_CONTACT_EMAIL', ''),
-            'url' => env('LARADOC_CONTACT_URL', ''),
+            'name' => env('LUMINOUS_CONTACT_NAME', ''),
+            'email' => env('LUMINOUS_CONTACT_EMAIL', ''),
+            'url' => env('LUMINOUS_CONTACT_URL', ''),
         ],
         'license' => [
-            'name' => env('LARADOC_LICENSE', ''),
-            'url' => env('LARADOC_LICENSE_URL', ''),
+            'name' => env('LUMINOUS_LICENSE', ''),
+            'url' => env('LUMINOUS_LICENSE_URL', ''),
         ],
     ],
 
@@ -189,10 +189,10 @@ return [
     |
     */
     'cache' => [
-        'enabled' => env('LARADOC_CACHE', false),
-        'ttl' => env('LARADOC_CACHE_TTL', 3600),
-        'key' => env('LARADOC_CACHE_KEY', 'luminous:spec'),
-        'store' => env('LARADOC_CACHE_STORE', null),
+        'enabled' => env('LUMINOUS_CACHE', false),
+        'ttl' => env('LUMINOUS_CACHE_TTL', 3600),
+        'key' => env('LUMINOUS_CACHE_KEY', 'luminous:spec'),
+        'store' => env('LUMINOUS_CACHE_STORE', null),
     ],
 
     /*

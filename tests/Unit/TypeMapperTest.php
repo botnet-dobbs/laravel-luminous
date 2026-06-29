@@ -57,11 +57,20 @@ class TypeMapperTest extends TestCase
         $this->assertSame(['a', 'b', 'c'], $schema['enum']);
     }
 
-    public function test_nullable_sets_nullable_flag(): void
+    public function test_nullable_produces_openapi31_type_array(): void
     {
         $schema = $this->mapper->validationRulesToSchema(['string', 'nullable']);
 
-        $this->assertTrue($schema['nullable']);
+        $this->assertSame(['string', 'null'], $schema['type']);
+        $this->assertArrayNotHasKey('nullable', $schema);
+    }
+
+    public function test_nullable_on_integer_produces_type_array(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['integer', 'nullable']);
+
+        $this->assertSame(['integer', 'null'], $schema['type']);
+        $this->assertArrayNotHasKey('nullable', $schema);
     }
 
     public function test_file_rule_produces_binary_format(): void
@@ -169,5 +178,64 @@ class TypeMapperTest extends TestCase
         $schema = $this->mapper->phpTypeToOpenApi('string|null');
 
         $this->assertSame('string', $schema['type']);
+    }
+
+    public function test_digits_rule_also_produces_pattern(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['string', 'digits:6']);
+
+        $this->assertSame(6, $schema['minLength']);
+        $this->assertSame(6, $schema['maxLength']);
+        $this->assertSame('^\\d{6}$', $schema['pattern']);
+    }
+
+    public function test_regex_rule_strips_delimiter(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['string', 'regex:/^[A-Z]+$/']);
+
+        $this->assertSame('^[A-Z]+$', $schema['pattern']);
+    }
+
+    public function test_regex_rule_without_delimiter_passes_through(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['string', 'regex:^[A-Z]+$']);
+
+        $this->assertSame('^[A-Z]+$', $schema['pattern']);
+    }
+
+    public function test_ip_rule_produces_ipv4_format(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['string', 'ip']);
+
+        $this->assertSame('ipv4', $schema['format']);
+    }
+
+    public function test_ipv4_rule_produces_ipv4_format(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['string', 'ipv4']);
+
+        $this->assertSame('ipv4', $schema['format']);
+    }
+
+    public function test_ipv6_rule_produces_ipv6_format(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['string', 'ipv6']);
+
+        $this->assertSame('ipv6', $schema['format']);
+    }
+
+    public function test_decimal_rule_produces_number_type(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['decimal']);
+
+        $this->assertSame('number', $schema['type']);
+    }
+
+    public function test_confirmed_rule_sets_write_only_and_password_format(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['string', 'confirmed']);
+
+        $this->assertTrue($schema['writeOnly']);
+        $this->assertSame('password', $schema['format']);
     }
 }

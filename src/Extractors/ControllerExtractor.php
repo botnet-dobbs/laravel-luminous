@@ -254,10 +254,12 @@ class ControllerExtractor
 
         $autoBody = $this->autoDetectFormRequest($methodRef);
         if ($autoBody !== null) {
+            $mediaType = $this->requestExtractor->mediaType($autoBody);
+
             return [
                 'required' => true,
                 'content' => [
-                    self::DEFAULT_MEDIA_TYPE => [
+                    $mediaType => [
                         'schema' => $this->requestExtractor->extract($autoBody),
                     ],
                 ],

@@ -36,22 +36,35 @@ trait ExtractsAnnotatedProperties
             $reflType = $prop->getType();
             $phpType = $reflType instanceof \ReflectionNamedType ? $reflType->getName() : 'mixed';
             $nullable = ($reflType?->allowsNull() ?? false) || $apiProp->nullable;
+            $propName = $prop->getName();
 
+            // Explicit $ref. OpenAPI 3.1 nullable refs use oneOf.
             if ($apiProp->ref) {
-                $properties[$prop->getName()] = ['$ref' => $apiProp->ref];
-                if (! $nullable) {
-                    $required[] = $prop->getName();
+                if ($nullable) {
+                    $properties[$propName] = ['oneOf' => [['$ref' => $apiProp->ref], ['type' => 'null']]];
+                } else {
+                    $properties[$propName] = ['$ref' => $apiProp->ref];
+                }
+                // nullable means value can be null but key is still required
+                // only optional: true removes from required
+                if (! $apiProp->optional) {
+                    $required[] = $propName;
                 }
 
                 continue;
             }
 
+            // PHP backed enum. Register in components and reference it. Nullable uses oneOf.
             if (class_exists($phpType) && is_subclass_of($phpType, \BackedEnum::class)) {
                 $enumSchema = $this->enumExtractor()->extract($phpType);
                 $ref = $this->registry()->register($phpType, $enumSchema);
-                $properties[$prop->getName()] = ['$ref' => $ref];
-                if (! $nullable) {
-                    $required[] = $prop->getName();
+                if ($nullable) {
+                    $properties[$propName] = ['oneOf' => [['$ref' => $ref], ['type' => 'null']]];
+                } else {
+                    $properties[$propName] = ['$ref' => $ref];
+                }
+                if (! $apiProp->optional) {
+                    $required[] = $propName;
                 }
 
                 continue;
@@ -65,8 +78,10 @@ trait ExtractsAnnotatedProperties
             if ($apiProp->example !== null) {
                 $schema['example'] = $apiProp->example;
             }
+            // OpenAPI 3.1: nullable primitives use type array instead of nullable: true
             if ($nullable) {
-                $schema['nullable'] = true;
+                $type = $schema['type'] ?? 'string';
+                $schema['type'] = [$type, 'null'];
             }
             if ($apiProp->minimum !== null) {
                 $schema['minimum'] = $apiProp->minimum;
@@ -89,14 +104,21 @@ trait ExtractsAnnotatedProperties
             if ($apiProp->writeOnly) {
                 $schema['writeOnly'] = true;
             }
+            if ($apiProp->deprecated) {
+                $schema['deprecated'] = true;
+            }
+            if ($apiProp->pattern) {
+                $schema['pattern'] = $apiProp->pattern;
+            }
 
-            if (($schema['type'] ?? '') === 'array') {
+            if (($schema['type'] ?? '') === 'array' || (is_array($schema['type'] ?? '') && in_array('array', $schema['type'] ?? [], true))) {
                 $schema['items'] = $this->resolveArrayItems($prop, $apiProp);
             }
 
-            $properties[$prop->getName()] = $schema;
-            if (! $nullable) {
-                $required[] = $prop->getName();
+            $properties[$propName] = $schema;
+            // Only optional: true removes from required. nullable only changes the type, not presence
+            if (! $apiProp->optional) {
+                $required[] = $propName;
             }
         }
 

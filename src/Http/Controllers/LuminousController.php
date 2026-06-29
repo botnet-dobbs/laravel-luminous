@@ -50,7 +50,12 @@ class LuminousController extends Controller
         $cdnBase = $uiConfig['cdn']['swagger_ui'] ?? '';
         if (! str_starts_with((string) $cdnBase, 'https://')) {
             $uiConfig['cdn']['swagger_ui'] = 'https://unpkg.com/swagger-ui-dist@5.18.2';
+            $cdnBase = $uiConfig['cdn']['swagger_ui'];
         }
+
+        $parsed = parse_url((string) $cdnBase);
+        $cdnOrigin = isset($parsed['host']) ? (($parsed['scheme'] ?? 'https').'://'.$parsed['host']) : '';
+        $csp = "default-src 'none'; script-src 'self' {$cdnOrigin} 'unsafe-inline'; style-src 'self' {$cdnOrigin} 'unsafe-inline'; img-src 'self' data:; connect-src 'self'";
 
         return response()
             ->view('luminous::swagger-ui', [
@@ -59,7 +64,8 @@ class LuminousController extends Controller
                 'uiConfig' => $uiConfig,
             ])
             ->header('X-Frame-Options', 'SAMEORIGIN')
-            ->header('X-Content-Type-Options', 'nosniff');
+            ->header('X-Content-Type-Options', 'nosniff')
+            ->header('Content-Security-Policy', $csp);
     }
 
     private function getSpec(): array

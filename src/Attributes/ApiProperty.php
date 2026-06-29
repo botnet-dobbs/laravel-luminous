@@ -20,5 +20,8 @@ final class ApiProperty
         public readonly ?string $ref = null,
         public readonly ?string $itemsRef = null,
         public readonly ?string $itemsType = null,
+        public readonly bool $optional = false,
+        public readonly bool $deprecated = false,
+        public readonly ?string $pattern = null,
     ) {}
 }

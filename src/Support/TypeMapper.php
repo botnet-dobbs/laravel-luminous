@@ -55,7 +55,7 @@ class TypeMapper
         if (str_contains($base, '|')) {
             $parts = explode('|', $base);
             $nullable = $nullable || in_array('null', $parts, true);
-            $parts = array_values(array_filter($parts, fn ($p) => $p !== 'null'));
+            $parts = collect($parts)->reject(fn ($p) => $p === 'null')->values()->all();
             $base = count($parts) === 1 ? $parts[0] : 'mixed';
         }
 
@@ -89,7 +89,7 @@ class TypeMapper
         foreach ($ruleStrings as $rule) {
             $resolvedType = match (true) {
                 $rule === 'integer', $rule === 'int' => 'integer',
-                $rule === 'numeric' => 'number',
+                $rule === 'numeric', $rule === 'decimal' => 'number',
                 $rule === 'boolean', $rule === 'bool' => 'boolean',
                 $rule === 'array' => 'array',
                 $rule === 'file', $rule === 'image' => 'file',
@@ -125,6 +125,24 @@ class TypeMapper
             }
             if ($rule === 'nullable') {
                 $schema['nullable'] = true;
+
+                continue;
+            }
+            if ($rule === 'ip' || $rule === 'ipv4') {
+                $schema['format'] = 'ipv4';
+
+                continue;
+            }
+            if ($rule === 'ipv6') {
+                $schema['format'] = 'ipv6';
+
+                continue;
+            }
+            if ($rule === 'confirmed') {
+                $schema['writeOnly'] = true;
+                if ($resolvedType === 'string') {
+                    $schema['format'] = 'password';
+                }
 
                 continue;
             }
@@ -176,6 +194,7 @@ class TypeMapper
                     $d = (int) substr($rule, 7);
                     $schema['minLength'] = $d;
                     $schema['maxLength'] = $d;
+                    $schema['pattern'] = "^\\d{{$d}}$";
                 }
 
                 continue;
@@ -185,6 +204,7 @@ class TypeMapper
                     [$min, $max] = explode(',', substr($rule, 15));
                     $schema['minLength'] = (int) $min;
                     $schema['maxLength'] = (int) $max;
+                    $schema['pattern'] = "^\\d{{$min},{$max}}$";
                 }
 
                 continue;
@@ -195,7 +215,18 @@ class TypeMapper
                 continue;
             }
             if (str_starts_with($rule, 'regex:')) {
-                $schema['pattern'] = substr($rule, 6);
+                $raw = substr($rule, 6);
+                // Strip common regex delimiters (e.g. /pattern/, ~pattern~, #pattern#)
+                if (strlen($raw) > 1 && $raw[0] === $raw[-1] && ! ctype_alnum($raw[0])) {
+                    $raw = substr($raw, 1, -1);
+                }
+                // OpenAPI pattern must be ECMAScript. Warn on PCRE-only constructs
+                // (atomic groups, named groups, possessive quantifiers, \K, \p{}) that
+                // are invalid ECMAScript and can break Swagger UI or cause ReDoS.
+                if (preg_match('/\(\?>|\(\?P[<\']|[+*?]\+|\\\\K\b|\\\\[pP]\{/', $raw)) {
+                    logger()->warning("Luminous: regex: rule contains PCRE-only constructs that ECMAScript does not support. The pattern may not work correctly in Swagger UI: {$raw}");
+                }
+                $schema['pattern'] = $raw;
 
                 continue;
             }
@@ -219,10 +250,13 @@ class TypeMapper
         foreach ($ruleObjects as $rule) {
             if ($rule instanceof Enum) {
                 try {
-                    $prop = (new \ReflectionObject($rule))->getProperty('type');
-                    $enumClass = $prop->getValue($rule);
-                    if (is_string($enumClass) && class_exists($enumClass) && is_subclass_of($enumClass, \BackedEnum::class)) {
-                        $schema['enum'] = collect($enumClass::cases())->map(fn ($c) => $c->value)->all();
+                    // Iterate all properties instead of relying on a specific private property name
+                    foreach ((new \ReflectionObject($rule))->getProperties() as $prop) {
+                        $val = $prop->getValue($rule);
+                        if (is_string($val) && class_exists($val) && is_subclass_of($val, \BackedEnum::class)) {
+                            $schema['enum'] = collect($val::cases())->map(fn ($c) => $c->value)->all();
+                            break;
+                        }
                     }
                 } catch (\Throwable) {
                     // Silently skip. Rule::enum() internals may change
@@ -231,19 +265,26 @@ class TypeMapper
                 try {
                     $prop = (new \ReflectionObject($rule))->getProperty('values');
                     $values = $prop->getValue($rule);
-                    $schema['enum'] = array_map('strval', $values);
-                } catch (\Throwable) {
-                    // Fallback: parse __toString, stripping any surrounding quotes
-                    $str = (string) $rule;
-                    if (str_starts_with($str, 'in:')) {
-                        $schema['enum'] = array_map(fn ($v) => trim($v, '"'), explode(',', substr($str, 3)));
-                    }
+                    $schema['enum'] = collect($values)->map(fn ($v) => (string) $v)->all();
+                } catch (\Throwable $e) {
+                    // Comma-splitting __toString would silently corrupt values containing commas.
+                    // Omit the enum list and warn rather than produce a wrong schema.
+                    logger()->warning("Luminous: could not read Rule::In values via reflection, so the enum list was left out of the schema. Error: {$e->getMessage()}");
                 }
             } elseif (method_exists($rule, '__toString')) {
                 $str = (string) $rule;
                 if (str_starts_with($str, 'in:')) {
-                    $schema['enum'] = array_map(fn ($v) => trim($v, '"'), explode(',', substr($str, 3)));
+                    $schema['enum'] = collect(explode(',', substr($str, 3)))->map(fn ($v) => trim($v, '"'))->all();
                 }
+            }
+        }
+
+        // OpenAPI 3.1: convert nullable sentinel to type array
+        if (isset($schema['nullable'])) {
+            unset($schema['nullable']);
+            $type = $schema['type'] ?? 'string';
+            if (! is_array($type)) {
+                $schema['type'] = [$type, 'null'];
             }
         }
 

@@ -67,7 +67,7 @@ class ComponentsRegistry
         return $this->schemas;
     }
 
-    private function toSchemaName(string $class): string
+    public function toSchemaName(string $class): string
     {
         $parts = explode('\\', ltrim($class, '\\'));
         $base = array_pop($parts);

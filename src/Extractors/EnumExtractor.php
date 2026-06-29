@@ -22,7 +22,13 @@ class EnumExtractor
         $descriptions = collect($reflection->getCases())
             ->mapWithKeys(function ($case) {
                 $doc = $case->getDocComment();
-                if ($doc && preg_match('/@description\s+(.+)/', $doc, $m)) {
+                if (! $doc) {
+                    return [];
+                }
+                if (preg_match('/@description\s+(.+)/u', $doc, $m)) {
+                    return [$case->getValue() => trim($m[1])];
+                }
+                if (preg_match('/\*\s+([^@\*][^\n]+)/u', $doc, $m)) {
                     return [$case->getValue() => trim($m[1])];
                 }
 

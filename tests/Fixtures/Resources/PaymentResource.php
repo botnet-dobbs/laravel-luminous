@@ -23,6 +23,6 @@ class PaymentResource extends JsonResource
     #[ApiProperty('Creation timestamp', format: 'date-time', readOnly: true)]
     public string $created_at;
 
-    #[ApiProperty('Settlement timestamp', format: 'date-time', nullable: true, readOnly: true)]
+    #[ApiProperty('Settlement timestamp', format: 'date-time', nullable: true, optional: true, readOnly: true)]
     public ?string $settled_at;
 }
