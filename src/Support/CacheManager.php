@@ -26,7 +26,7 @@ class CacheManager
             return;
         }
 
-        $this->store()->put(config('luminous.cache.key'), $spec, config('luminous.cache.ttl'));
+        $this->store()->put(config('luminous.cache.key'), $spec, (int) config('luminous.cache.ttl', 3600));
     }
 
     public function flush(): void

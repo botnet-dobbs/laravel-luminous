@@ -339,6 +339,13 @@ class ControllerExtractor
             if ($example->type === 'response') {
                 $status = (string) $example->status;
                 if (isset($responses[$status])) {
+                    if (! isset($responses[$status]['content'][$example->mediaType]['schema'])) {
+                        logger()->warning(
+                            "Luminous: ApiExample '{$example->name}' targets response {$status} which has no schema. Example was not applied."
+                        );
+
+                        continue;
+                    }
                     $responses[$status]['content'][$example->mediaType]['examples'][$example->name] = [
                         'summary' => $example->summary,
                         'value' => $example->value,
@@ -365,8 +372,15 @@ class ControllerExtractor
 
             if ($composed->forStatus !== null) {
                 $key = (string) $composed->forStatus;
-                if (isset($responses[$key]) && ! isset($responses[$key]['content'])) {
-                    $responses[$key]['content'][self::DEFAULT_MEDIA_TYPE]['schema'] = $composedSchema;
+                if (isset($responses[$key])) {
+                    if (! isset($responses[$key]['content'])) {
+                        $responses[$key]['content'][self::DEFAULT_MEDIA_TYPE]['schema'] = $composedSchema;
+                    } else {
+                        logger()->warning(
+                            "Luminous: ApiComposedOf on {$methodRef->class}::{$methodRef->name}: ".
+                            "response {$key} already has a content schema. ApiComposedOf was not applied."
+                        );
+                    }
                 }
             } else {
                 $applied = false;

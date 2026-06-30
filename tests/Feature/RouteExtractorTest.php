@@ -113,4 +113,28 @@ class RouteExtractorTest extends TestCase
         $this->assertContains('api.included', $names);
         $this->assertNotContains('other.excluded', $names);
     }
+
+    public function test_include_routes_wildcard_does_not_match_longer_prefix(): void
+    {
+        Route::get('/admin', [TestAttributeController::class, 'store'])->name('admin.index');
+        Route::get('/administrator', [TestAttributeController::class, 'store'])->name('administrator.index');
+
+        $routes = $this->makeExtractor(['include_routes' => ['admin.*']])->extract();
+        $names = collect($routes)->pluck('routeName')->all();
+
+        $this->assertContains('admin.index', $names);
+        $this->assertNotContains('administrator.index', $names);
+    }
+
+    public function test_include_routes_exact_name_match(): void
+    {
+        Route::get('/ping', [TestAttributeController::class, 'store'])->name('ping');
+        Route::get('/pong', [TestAttributeController::class, 'store'])->name('pong');
+
+        $routes = $this->makeExtractor(['include_routes' => ['ping']])->extract();
+        $names = collect($routes)->pluck('routeName')->all();
+
+        $this->assertContains('ping', $names);
+        $this->assertNotContains('pong', $names);
+    }
 }

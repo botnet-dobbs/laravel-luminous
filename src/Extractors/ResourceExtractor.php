@@ -78,10 +78,18 @@ class ResourceExtractor
         foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
             $reflType = $prop->getType();
             $phpType = $reflType instanceof \ReflectionNamedType ? $reflType->getName() : '';
+            $isNullable = $reflType?->allowsNull() ?? false;
 
             if ($phpType && class_exists($phpType) && is_subclass_of($phpType, JsonResource::class)) {
                 if (! isset($properties[$prop->getName()])) {
-                    $properties[$prop->getName()] = $this->extract($phpType);
+                    $extracted = $this->extract($phpType);
+                    $properties[$prop->getName()] = $isNullable
+                        ? ['oneOf' => [$extracted, ['type' => 'null']]]
+                        : $extracted;
+
+                    if (! $isNullable) {
+                        $required[] = $prop->getName();
+                    }
                 }
             }
         }

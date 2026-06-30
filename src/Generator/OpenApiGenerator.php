@@ -21,12 +21,22 @@ class OpenApiGenerator
 
         $paths = [];
         $rawTags = [];
+        $seenOperationIds = [];
 
         foreach ($this->routeExtractor->extract() as $route) {
             try {
                 $operation = $this->controllerExtractor->extract($route);
                 if (empty($operation)) {
                     continue;
+                }
+                $id = $operation['operationId'] ?? '';
+                if ($id !== '') {
+                    if (isset($seenOperationIds[$id])) {
+                        $seenOperationIds[$id]++;
+                        $operation['operationId'] = $id.'_'.$seenOperationIds[$id];
+                    } else {
+                        $seenOperationIds[$id] = 1;
+                    }
                 }
                 $paths[$route->path][$route->httpMethod] = $operation;
                 array_push($rawTags, ...($operation['tags'] ?? []));

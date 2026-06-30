@@ -100,7 +100,12 @@ class RouteExtractor
 
         if (! empty($includes)) {
             foreach ($includes as $pattern) {
-                if (str_starts_with($name, rtrim($pattern, '.*')) || fnmatch($pattern, $uri)) {
+                if (str_ends_with($pattern, '.*')) {
+                    $prefix = substr($pattern, 0, -2);
+                    if (str_starts_with($name, $prefix.'.') || $name === $prefix) {
+                        return false;
+                    }
+                } elseif ($name === $pattern || fnmatch($pattern, $uri)) {
                     return false;
                 }
             }

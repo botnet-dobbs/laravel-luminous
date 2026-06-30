@@ -254,4 +254,18 @@ class TypeMapperTest extends TestCase
         $this->assertSame(1, $schema['minimum']);
         $this->assertSame(100, $schema['maximum']);
     }
+
+    public function test_decimal_colon_n_rule_produces_number_type(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['decimal:2']);
+
+        $this->assertSame('number', $schema['type']);
+    }
+
+    public function test_decimal_colon_n_rule_with_range_produces_number_type(): void
+    {
+        $schema = $this->mapper->validationRulesToSchema(['decimal:2,4']);
+
+        $this->assertSame('number', $schema['type']);
+    }
 }

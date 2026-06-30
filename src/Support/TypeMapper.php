@@ -49,12 +49,10 @@ class TypeMapper
         }
 
         $base = ltrim($phpType, '?');
-        $nullable = $phpType !== $base;
 
         // Handle PHP 8 union types (e.g. string|null, int|float|null)
         if (str_contains($base, '|')) {
             $parts = explode('|', $base);
-            $nullable = $nullable || in_array('null', $parts, true);
             $parts = collect($parts)->reject(fn ($p) => $p === 'null')->values()->all();
             $base = count($parts) === 1 ? $parts[0] : 'mixed';
         }
@@ -89,7 +87,7 @@ class TypeMapper
         foreach ($ruleStrings as $rule) {
             $resolvedType = match (true) {
                 $rule === 'integer', $rule === 'int' => 'integer',
-                $rule === 'numeric', $rule === 'decimal' => 'number',
+                $rule === 'numeric', $rule === 'decimal', str_starts_with($rule, 'decimal:') => 'number',
                 $rule === 'boolean', $rule === 'bool' => 'boolean',
                 $rule === 'array' => 'array',
                 $rule === 'file', $rule === 'image' => 'file',

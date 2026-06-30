@@ -158,6 +158,51 @@ class SchemaExtractorsTest extends TestCase
         $this->assertSame(['$ref' => '#/components/schemas/CustomSchema'], $schema['properties']['annotated']);
     }
 
+    public function test_secondary_loop_nullable_resource_property_uses_one_of(): void
+    {
+        $registry = $this->makeRegistry();
+        $extractor = $this->makeResourceExtractor($registry);
+
+        $extractor->extract(TreeNodeResource::class);
+
+        $schema = $registry->all()['TreeNodeResource'];
+        // ?TreeNodeResource $parent is nullable — must produce oneOf not a bare $ref
+        $this->assertArrayHasKey('oneOf', $schema['properties']['parent']);
+        $oneOf = $schema['properties']['parent']['oneOf'];
+        $this->assertCount(2, $oneOf);
+        $this->assertArrayHasKey('$ref', $oneOf[0]);
+        $this->assertSame(['type' => 'null'], $oneOf[1]);
+    }
+
+    public function test_secondary_loop_non_nullable_resource_property_in_required(): void
+    {
+        $registry = $this->makeRegistry();
+        $extractor = $this->makeResourceExtractor($registry);
+
+        $extractor->extract(TreeNodeResource::class);
+
+        $schema = $registry->all()['TreeNodeResource'];
+        // PaymentResource $metadata is non-nullable and has no #[ApiProperty] — must appear in required
+        $this->assertContains('metadata', $schema['required'] ?? []);
+    }
+
+    public function test_registry_name_collision_both_classes_registered(): void
+    {
+        $registry = $this->makeRegistry();
+
+        // Two classes with different FQCNs that share the same base name
+        // Simulate by registering manually under a fake class path
+        $ref1 = $registry->register('App\\V1\\Payment', ['type' => 'object', 'properties' => ['id' => ['type' => 'string']]]);
+        $ref2 = $registry->register('App\\V2\\Payment', ['type' => 'object', 'properties' => ['id' => ['type' => 'integer']]]);
+
+        // Both must be registered in classIndex (isRegistered returns true for each)
+        $this->assertTrue($registry->isRegistered('App\\V1\\Payment'));
+        $this->assertTrue($registry->isRegistered('App\\V2\\Payment'));
+
+        // The returned refs must be different (second gets a namespace-qualified name)
+        $this->assertNotSame($ref1, $ref2);
+    }
+
     public function test_union_type_property_does_not_crash(): void
     {
         $registry = $this->makeRegistry();

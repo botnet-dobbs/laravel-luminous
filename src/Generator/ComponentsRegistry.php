@@ -20,6 +20,8 @@ class ComponentsRegistry
 
         if (! isset($this->schemas[$name])) {
             $this->schemas[$name] = $schema;
+        }
+        if (! isset($this->classIndex[$class])) {
             $this->classIndex[$class] = $name;
         }
 

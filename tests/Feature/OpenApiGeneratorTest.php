@@ -167,4 +167,30 @@ class OpenApiGeneratorTest extends TestCase
         $this->assertArrayHasKey('securitySchemes', $spec['components']);
         $this->assertArrayHasKey('bearerAuth', $spec['components']['securitySchemes']);
     }
+
+    public function test_duplicate_operation_ids_get_numeric_suffix(): void
+    {
+        // Add a second versioned route for the same controller method so both share the same base operationId.
+        $this->app['router']->get('/v2/payments', [PaymentController::class, 'index'])->name('v2.payment.index');
+
+        $spec = $this->makeGenerator()->generate();
+
+        $operationIds = collect($spec['paths'])
+            ->flatMap(fn ($methods) => collect($methods)->pluck('operationId'))
+            ->filter()
+            ->values()
+            ->all();
+
+        $this->assertSame(
+            count($operationIds),
+            count(array_unique($operationIds)),
+            'Spec must not contain duplicate operationIds'
+        );
+
+        $v1Id = $spec['paths']['/v1/payments']['get']['operationId'] ?? '';
+        $v2Id = $spec['paths']['/v2/payments']['get']['operationId'] ?? '';
+
+        $this->assertNotSame('', $v1Id);
+        $this->assertSame($v1Id.'_2', $v2Id);
+    }
 }
