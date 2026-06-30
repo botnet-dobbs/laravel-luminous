@@ -4,16 +4,20 @@ namespace Botnetdobbs\Luminous\Extractors;
 
 use Botnetdobbs\Luminous\Attributes\ApiIgnore;
 use Illuminate\Routing\Route;
+use Illuminate\Routing\Router;
 
 class RouteExtractor
 {
-    public function __construct(private readonly array $config) {}
+    public function __construct(
+        private readonly array $config,
+        private readonly Router $router,
+    ) {}
 
     public function extract(): array
     {
         $routes = [];
 
-        foreach (app('router')->getRoutes() as $route) {
+        foreach ($this->router->getRoutes() as $route) {
             $action = $route->getActionName();
 
             if (! $action || str_contains($action, 'Closure') || $action === 'Closure') {

@@ -11,6 +11,7 @@ use Botnetdobbs\Luminous\Generator\ComponentsRegistry;
 use Botnetdobbs\Luminous\LuminousServiceProvider;
 use Botnetdobbs\Luminous\Support\TypeMapper;
 use Botnetdobbs\Luminous\Tests\Fixtures\Controllers\IgnoredController;
+use Botnetdobbs\Luminous\Tests\Fixtures\Controllers\OrderController;
 use Botnetdobbs\Luminous\Tests\Fixtures\Controllers\PaymentController;
 use Botnetdobbs\Luminous\Tests\Fixtures\Controllers\PlainController;
 use Orchestra\Testbench\TestCase;
@@ -216,5 +217,39 @@ class ControllerExtractorTest extends TestCase
 
         $schema = $op['responses']['401']['content']['application/json']['schema'];
         $this->assertSame('#/components/schemas/ErrorResponse', $schema['$ref']);
+    }
+
+    public function test_path_params_are_auto_detected_from_route_uri(): void
+    {
+        $route = new ExtractedRoute('get', '/orders/{orderId}', OrderController::class, 'show', 'order.show', []);
+        $op = $this->makeExtractor()->extract($route);
+
+        $pathParam = collect($op['parameters'] ?? [])->firstWhere('name', 'orderId');
+
+        $this->assertNotNull($pathParam, 'orderId path parameter was not generated');
+        $this->assertSame('path', $pathParam['in']);
+        $this->assertTrue($pathParam['required']);
+        $this->assertSame('integer', $pathParam['schema']['type']);
+    }
+
+    public function test_multiple_path_params_are_all_auto_detected(): void
+    {
+        $route = new ExtractedRoute('get', '/orders/{orderId}/items/{itemId}', OrderController::class, 'item', 'order.item', []);
+        $op = $this->makeExtractor()->extract($route);
+
+        $names = collect($op['parameters'] ?? [])->where('in', 'path')->pluck('name')->all();
+
+        $this->assertContains('orderId', $names);
+        $this->assertContains('itemId', $names);
+    }
+
+    public function test_explicit_api_param_overrides_auto_detection(): void
+    {
+        $op = $this->makeExtractor()->extract($this->route('get', '/v1/payments/{id}', 'show'));
+
+        $idParams = collect($op['parameters'] ?? [])->where('name', 'id')->where('in', 'path')->values()->all();
+
+        $this->assertCount(1, $idParams, 'id must appear exactly once, not duplicated by auto-detection');
+        $this->assertSame('uuid', $idParams[0]['schema']['format'] ?? null, 'Explicit format from #[ApiParam] must be preserved');
     }
 }

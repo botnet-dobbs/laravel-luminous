@@ -72,12 +72,14 @@ class ControllerExtractor
             $operation['description'] = $existing ? $notice."\n\n".$existing : $notice;
         }
 
-        $tags = $this->buildTags($classRef, $methodRef);
-        $operation['tags'] = $tags;
-        $operation['operationId'] = $operationId ?? $this->generateOperationId($route, $tags);
+        $tagObjects = $this->buildTags($classRef, $methodRef);
+        $tagNames = collect($tagObjects)->pluck('name')->values()->all();
+        $operation['tags'] = $tagNames;
+        $operation['x-luminous-tags'] = $tagObjects;
+        $operation['operationId'] = $operationId ?? $this->generateOperationId($route, $tagNames);
         $operation['security'] = $this->buildSecurity($classRef, $methodRef);
 
-        $parameters = $this->buildParameters($methodRef);
+        $parameters = $this->buildParameters($methodRef, $route);
         if (! empty($parameters)) {
             $operation['parameters'] = $parameters;
         }
@@ -116,12 +118,10 @@ class ControllerExtractor
     private function buildTags(\ReflectionClass $classRef, \ReflectionMethod $methodRef): array
     {
         return collect($classRef->getAttributes(ApiTag::class))
-            ->map(fn ($a) => $a->newInstance()->name)
-            ->merge(
-                collect($methodRef->getAttributes(ApiTag::class))
-                    ->map(fn ($a) => $a->newInstance()->name)
-            )
-            ->unique()
+            ->map(fn ($a) => $a->newInstance())
+            ->merge(collect($methodRef->getAttributes(ApiTag::class))->map(fn ($a) => $a->newInstance()))
+            ->unique(fn (ApiTag $tag) => $tag->name)
+            ->map(fn (ApiTag $tag) => collect(['name' => $tag->name, 'description' => $tag->description ?: null])->filter()->all())
             ->values()
             ->all();
     }
@@ -157,12 +157,14 @@ class ControllerExtractor
         return $this->config['default_security'] ?? [];
     }
 
-    private function buildParameters(\ReflectionMethod $methodRef): array
+    private function buildParameters(\ReflectionMethod $methodRef, ExtractedRoute $route): array
     {
         $parameters = [];
+        $explicitParamNames = [];
 
         foreach ($methodRef->getAttributes(ApiParam::class) as $attr) {
             $param = $attr->newInstance();
+            $explicitParamNames[] = $param->name;
             $schema = ['type' => $param->type];
             if ($param->format !== '') {
                 $schema['format'] = $param->format;
@@ -181,6 +183,34 @@ class ControllerExtractor
                 $entry['description'] = $param->description;
             }
             $parameters[] = $entry;
+        }
+
+        preg_match_all('/\{(\w+)\}/', $route->path, $matches);
+        $phpParams = collect($methodRef->getParameters())->keyBy(fn ($p) => $p->getName());
+
+        foreach ($matches[1] ?? [] as $name) {
+            if (in_array($name, $explicitParamNames, true)) {
+                continue;
+            }
+
+            $openApiType = 'string';
+            $phpParam = $phpParams->get($name);
+            if ($phpParam !== null) {
+                $reflType = $phpParam->getType();
+                $typeName = $reflType instanceof \ReflectionNamedType ? $reflType->getName() : 'string';
+                $openApiType = match ($typeName) {
+                    'int' => 'integer',
+                    'float' => 'number',
+                    default => 'string',
+                };
+            }
+
+            $parameters[] = [
+                'name' => $name,
+                'in' => 'path',
+                'required' => true,
+                'schema' => ['type' => $openApiType],
+            ];
         }
 
         foreach ($methodRef->getAttributes(ApiQuery::class) as $attr) {

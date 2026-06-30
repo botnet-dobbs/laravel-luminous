@@ -12,6 +12,8 @@ use Botnetdobbs\Luminous\Generator\OpenApiGenerator;
 use Botnetdobbs\Luminous\LuminousServiceProvider;
 use Botnetdobbs\Luminous\Support\TypeMapper;
 use Botnetdobbs\Luminous\Tests\Fixtures\Controllers\PaymentController;
+use Illuminate\Events\Dispatcher;
+use Illuminate\Routing\Router;
 use Orchestra\Testbench\TestCase;
 
 class OpenApiGeneratorTest extends TestCase
@@ -51,7 +53,7 @@ class OpenApiGeneratorTest extends TestCase
         $requestEx = new RequestExtractor($typeMapper, $registry, $enumEx);
         $resourceEx = new ResourceExtractor($typeMapper, $registry, $enumEx);
         $controllerEx = new ControllerExtractor($requestEx, $resourceEx, $config);
-        $routeEx = new RouteExtractor($config);
+        $routeEx = new RouteExtractor($config, $this->app['router']);
 
         return new OpenApiGenerator(
             config: $config,
@@ -166,6 +168,43 @@ class OpenApiGeneratorTest extends TestCase
 
         $this->assertArrayHasKey('securitySchemes', $spec['components']);
         $this->assertArrayHasKey('bearerAuth', $spec['components']['securitySchemes']);
+    }
+
+    public function test_api_tag_description_appears_in_top_level_tags(): void
+    {
+        $spec = $this->makeGenerator()->generate();
+
+        $paymentsTag = collect($spec['tags'])->firstWhere('name', 'Payments');
+
+        $this->assertNotNull($paymentsTag, 'Payments tag not found in top-level tags');
+        $this->assertSame('Payment lifecycle: create, retrieve, cancel', $paymentsTag['description'] ?? '');
+    }
+
+    public function test_top_level_tags_are_sorted_alphabetically(): void
+    {
+        $spec = $this->makeGenerator()->generate();
+
+        $tagNames = collect($spec['tags'])->pluck('name')->values()->all();
+        $this->assertSame(collect($tagNames)->sort()->values()->all(), $tagNames);
+    }
+
+    public function test_route_extractor_uses_injected_router(): void
+    {
+        // Passing a fresh router with no routes should produce an empty paths object.
+        $emptyRouter = new Router(new Dispatcher);
+        $config = array_merge(config('luminous'), ['exclude_routes' => []]);
+        $registry = new ComponentsRegistry;
+        $enumEx = new EnumExtractor;
+        $typeMapper = new TypeMapper($enumEx);
+        $requestEx = new RequestExtractor($typeMapper, $registry, $enumEx);
+        $resourceEx = new ResourceExtractor($typeMapper, $registry, $enumEx);
+        $controllerEx = new ControllerExtractor($requestEx, $resourceEx, $config);
+        $routeEx = new RouteExtractor($config, $emptyRouter);
+        $generator = new OpenApiGenerator($config, $routeEx, $controllerEx, $registry);
+
+        $spec = $generator->generate();
+
+        $this->assertEmpty($spec['paths'], 'Empty router must produce no paths');
     }
 
     public function test_duplicate_operation_ids_get_numeric_suffix(): void

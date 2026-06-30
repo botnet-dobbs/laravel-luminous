@@ -14,24 +14,24 @@ class ResourceExtractor
     use ExtractsAnnotatedProperties;
 
     public function __construct(
-        private readonly TypeMapper $typeMapperInstance,
-        private readonly ComponentsRegistry $registryInstance,
-        private readonly EnumExtractor $enumExtractorInstance,
+        private readonly TypeMapper $typeMapper,
+        private readonly ComponentsRegistry $registry,
+        private readonly EnumExtractor $enumExtractor,
     ) {}
 
     protected function typeMapper(): TypeMapper
     {
-        return $this->typeMapperInstance;
+        return $this->typeMapper;
     }
 
     protected function registry(): ComponentsRegistry
     {
-        return $this->registryInstance;
+        return $this->registry;
     }
 
     protected function enumExtractor(): EnumExtractor
     {
-        return $this->enumExtractorInstance;
+        return $this->enumExtractor;
     }
 
     public function extract(string $resourceClass): array
@@ -40,17 +40,17 @@ class ResourceExtractor
             return ['type' => 'object'];
         }
 
-        if ($this->registryInstance->isRegistered($resourceClass)) {
-            return ['$ref' => $this->registryInstance->refFor($resourceClass)];
+        if ($this->registry->isRegistered($resourceClass)) {
+            return ['$ref' => $this->registry->refFor($resourceClass)];
         }
 
         // Pre-register a placeholder before building so that any recursive call
         // for this class hits isRegistered()=true above and breaks the cycle.
-        $ref = $this->registryInstance->register($resourceClass, ['type' => 'object']);
+        $ref = $this->registry->register($resourceClass, ['type' => 'object']);
 
         $schema = $this->buildSchema($resourceClass);
 
-        $this->registryInstance->updateSchema($resourceClass, $schema);
+        $this->registry->updateSchema($resourceClass, $schema);
 
         return ['$ref' => $ref];
     }
@@ -126,8 +126,8 @@ class ResourceExtractor
 
             if (class_exists($ref)) {
                 if (is_subclass_of($ref, \BackedEnum::class)) {
-                    $enumSchema = $this->enumExtractorInstance->extract($ref);
-                    $enumRef = $this->registryInstance->register($ref, $enumSchema);
+                    $enumSchema = $this->enumExtractor->extract($ref);
+                    $enumRef = $this->registry->register($ref, $enumSchema);
                     $schema['$ref'] = $enumRef;
 
                     return $schema;

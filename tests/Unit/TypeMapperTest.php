@@ -2,6 +2,7 @@
 
 namespace Botnetdobbs\Luminous\Tests\Unit;
 
+use Botnetdobbs\Luminous\Extractors\EnumExtractor;
 use Botnetdobbs\Luminous\Support\TypeMapper;
 use Botnetdobbs\Luminous\Tests\Fixtures\Enums\PaymentStatus;
 use Illuminate\Validation\Rule;
@@ -267,5 +268,21 @@ class TypeMapperTest extends TestCase
         $schema = $this->mapper->validationRulesToSchema(['decimal:2,4']);
 
         $this->assertSame('number', $schema['type']);
+    }
+
+    public function test_class_from_rule_returns_backing_enum_class(): void
+    {
+        $extractor = new EnumExtractor;
+        $rule = Rule::enum(PaymentStatus::class);
+
+        $this->assertSame(PaymentStatus::class, $extractor->classFromRule($rule));
+    }
+
+    public function test_class_from_rule_returns_null_for_non_enum_object(): void
+    {
+        $extractor = new EnumExtractor;
+        $rule = Rule::in(['a', 'b']);
+
+        $this->assertNull($extractor->classFromRule($rule));
     }
 }

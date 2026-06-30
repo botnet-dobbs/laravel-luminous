@@ -22,7 +22,7 @@ class RouteExtractorTest extends TestCase
         return new RouteExtractor(array_merge([
             'exclude_routes' => ['luminous.*'],
             'include_routes' => [],
-        ], $config));
+        ], $config), $this->app['router']);
     }
 
     public function test_extracts_controller_routes(): void

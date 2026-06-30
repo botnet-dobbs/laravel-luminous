@@ -4,6 +4,22 @@ namespace Botnetdobbs\Luminous\Extractors;
 
 class EnumExtractor
 {
+    public function classFromRule(object $rule): ?string
+    {
+        try {
+            foreach ((new \ReflectionObject($rule))->getProperties() as $prop) {
+                $val = $prop->getValue($rule);
+                if (is_string($val) && class_exists($val) && is_subclass_of($val, \BackedEnum::class)) {
+                    return $val;
+                }
+            }
+        } catch (\Throwable) {
+            // Rule::enum() internals may change between framework versions
+        }
+
+        return null;
+    }
+
     public function extract(string $enumClass): array
     {
         if (! class_exists($enumClass) || ! is_subclass_of($enumClass, \BackedEnum::class)) {

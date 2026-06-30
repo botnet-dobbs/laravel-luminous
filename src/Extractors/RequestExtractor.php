@@ -14,24 +14,24 @@ class RequestExtractor
     use ExtractsAnnotatedProperties;
 
     public function __construct(
-        private readonly TypeMapper $typeMapperInstance,
-        private readonly ComponentsRegistry $registryInstance,
-        private readonly EnumExtractor $enumExtractorInstance,
+        private readonly TypeMapper $typeMapper,
+        private readonly ComponentsRegistry $registry,
+        private readonly EnumExtractor $enumExtractor,
     ) {}
 
     protected function typeMapper(): TypeMapper
     {
-        return $this->typeMapperInstance;
+        return $this->typeMapper;
     }
 
     protected function registry(): ComponentsRegistry
     {
-        return $this->registryInstance;
+        return $this->registry;
     }
 
     protected function enumExtractor(): EnumExtractor
     {
-        return $this->enumExtractorInstance;
+        return $this->enumExtractor;
     }
 
     public function extract(string $requestClass): array
@@ -40,12 +40,12 @@ class RequestExtractor
             return ['type' => 'object'];
         }
 
-        if ($this->registryInstance->isRegistered($requestClass)) {
-            return ['$ref' => $this->registryInstance->refFor($requestClass)];
+        if ($this->registry->isRegistered($requestClass)) {
+            return ['$ref' => $this->registry->refFor($requestClass)];
         }
 
         $schema = $this->buildSchema($requestClass);
-        $ref = $this->registryInstance->register($requestClass, $schema);
+        $ref = $this->registry->register($requestClass, $schema);
 
         return ['$ref' => $ref];
     }
@@ -67,7 +67,7 @@ class RequestExtractor
             }
 
             foreach ($instance->rules() as $fieldRules) {
-                $ruleArray = is_string($fieldRules) ? explode('|', $fieldRules) : (array) $fieldRules;
+                $ruleArray = $this->normaliseRules($fieldRules);
                 foreach ($ruleArray as $rule) {
                     if (is_string($rule) && in_array($rule, ['file', 'image', 'mimes', 'mimetypes'], true)) {
                         return 'multipart/form-data';
@@ -160,23 +160,19 @@ class RequestExtractor
             $ruleStrings = array_values(array_filter($ruleArray, 'is_string'));
 
             if (isset($wildcards[$field])) {
-                $schema = $this->buildWildcardArraySchema($field, $ruleArray, $wildcards[$field]);
+                $schema = $this->buildWildcardArraySchema($ruleArray, $wildcards[$field]);
             } elseif (isset($nested[$field])) {
                 $schema = $this->buildNestedObjectSchema($nested[$field]);
             } else {
-                $schema = $this->typeMapperInstance->validationRulesToSchema($ruleArray);
+                $schema = $this->typeMapper->validationRulesToSchema($ruleArray);
 
-                // Resolve Rule::enum(). Registers the enum in components
-                $enumClass = $this->detectEnumClass($ruleArray);
-                if ($enumClass) {
-                    $enumSchema = $this->enumExtractorInstance->extract($enumClass);
-                    $enumRef = $this->registryInstance->register($enumClass, $enumSchema);
+                // Resolve Rule::enum(). Registers the enum in components and returns a $ref.
+                $enumRef = $this->resolveEnumRef($ruleArray);
+                if ($enumRef !== null) {
                     $extra = array_intersect_key($schema, array_flip(['description', 'example']));
-                    if (! empty($extra)) {
-                        $schema = array_merge(['allOf' => [['$ref' => $enumRef]]], $extra);
-                    } else {
-                        $schema = ['$ref' => $enumRef];
-                    }
+                    $schema = ! empty($extra)
+                        ? array_merge(['allOf' => [['$ref' => $enumRef]]], $extra)
+                        : ['$ref' => $enumRef];
                 }
 
                 // Handle 'confirmed' rule -> companion field (only if not already declared in rules)
@@ -307,17 +303,15 @@ class RequestExtractor
             $ruleStrings = array_values(array_filter($ruleArray, 'is_string'));
 
             if (isset($wildcards[$child])) {
-                $schema = $this->buildWildcardArraySchema($child, $ruleArray, $wildcards[$child], $depth + 1);
+                $schema = $this->buildWildcardArraySchema($ruleArray, $wildcards[$child], $depth + 1);
             } elseif (isset($nested[$child])) {
                 $schema = $this->buildNestedObjectSchema($nested[$child], $depth + 1);
             } else {
-                $schema = $this->typeMapperInstance->validationRulesToSchema($ruleArray) ?: ['type' => 'string'];
+                $schema = $this->typeMapper->validationRulesToSchema($ruleArray) ?: ['type' => 'string'];
 
                 // Register Rule::enum() as a component ref, same as top-level fields do.
-                $enumClass = $this->detectEnumClass($ruleArray);
-                if ($enumClass) {
-                    $enumSchema = $this->enumExtractorInstance->extract($enumClass);
-                    $enumRef = $this->registryInstance->register($enumClass, $enumSchema);
+                $enumRef = $this->resolveEnumRef($ruleArray);
+                if ($enumRef !== null) {
                     $extra = array_intersect_key($schema, array_flip(['description', 'example']));
                     $schema = ! empty($extra)
                         ? array_merge(['allOf' => [['$ref' => $enumRef]]], $extra)
@@ -346,9 +340,9 @@ class RequestExtractor
      * Simple wildcard ('tag_ids.*'): { type: array, items: { type: string, format: uuid } }
      * Object wildcard ('items.*.qty'): { type: array, items: { type: object, properties: {...} } }
      */
-    private function buildWildcardArraySchema(string $parentField, array $parentRules, array $childRules, int $depth = 0): array
+    private function buildWildcardArraySchema(array $parentRules, array $childRules, int $depth = 0): array
     {
-        $parentSchema = $this->typeMapperInstance->validationRulesToSchema($parentRules);
+        $parentSchema = $this->typeMapper->validationRulesToSchema($parentRules);
         $schema = ['type' => 'array'];
 
         if (isset($parentSchema['minItems'])) {
@@ -362,7 +356,7 @@ class RequestExtractor
 
         if ($isSimple || empty($childRules)) {
             $itemRuleArray = $this->normaliseRules($childRules['__items__'] ?? []);
-            $schema['items'] = $this->typeMapperInstance->validationRulesToSchema($itemRuleArray) ?: ['type' => 'string'];
+            $schema['items'] = $this->typeMapper->validationRulesToSchema($itemRuleArray) ?: ['type' => 'string'];
         } else {
             // Object wildcard. Build item schema from child rules (exclude the __items__ sentinel)
             $objectRules = array_diff_key($childRules, ['__items__' => true]);
@@ -438,25 +432,15 @@ class RequestExtractor
         return ! in_array('sometimes', $ruleStrings, true);
     }
 
-    private function detectEnumClass(array $ruleArray): ?string
+    private function resolveEnumRef(array $ruleArray): ?string
     {
         foreach ($ruleArray as $rule) {
-            if (! is_object($rule)) {
+            if (! is_object($rule) || ! $rule instanceof Enum) {
                 continue;
             }
-
-            if ($rule instanceof Enum) {
-                try {
-                    // Iterate all properties instead of relying on a specific private property name
-                    foreach ((new \ReflectionObject($rule))->getProperties() as $prop) {
-                        $val = $prop->getValue($rule);
-                        if (is_string($val) && class_exists($val) && is_subclass_of($val, \BackedEnum::class)) {
-                            return $val;
-                        }
-                    }
-                } catch (\Throwable) {
-                    // ignore
-                }
+            $class = $this->enumExtractor->classFromRule($rule);
+            if ($class !== null) {
+                return $this->registry->register($class, $this->enumExtractor->extract($class));
             }
         }
 
@@ -510,8 +494,8 @@ class RequestExtractor
         if (isset($schema['$ref'])) {
             $ref = $schema['$ref'];
             if (class_exists($ref) && is_subclass_of($ref, \BackedEnum::class)) {
-                $enumSchema = $this->enumExtractorInstance->extract($ref);
-                $enumRef = $this->registryInstance->register($ref, $enumSchema);
+                $enumSchema = $this->enumExtractor->extract($ref);
+                $enumRef = $this->registry->register($ref, $enumSchema);
                 $schema['$ref'] = $enumRef;
             }
 

@@ -48,7 +48,7 @@ class FullSpecGenerationTest extends TestCase
         $requestEx = new RequestExtractor($typeMapper, $registry, $enumEx);
         $resourceEx = new ResourceExtractor($typeMapper, $registry, $enumEx);
         $controllerEx = new ControllerExtractor($requestEx, $resourceEx, $config);
-        $routeEx = new RouteExtractor($config);
+        $routeEx = new RouteExtractor($config, $this->app['router']);
 
         return new OpenApiGenerator(
             config: $config,

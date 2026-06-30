@@ -53,13 +53,8 @@ class LuminousController extends Controller
             $cdnBase = $uiConfig['cdn']['swagger_ui'];
         }
 
-        $parsed = parse_url((string) $cdnBase);
-        $cdnOrigin = isset($parsed['host']) ? (($parsed['scheme'] ?? 'https').'://'.$parsed['host']) : '';
         $nonce = base64_encode(random_bytes(16));
-        $csp = "default-src 'none'; script-src 'self' {$cdnOrigin} 'nonce-{$nonce}'; ".
-               "style-src 'self' {$cdnOrigin} 'unsafe-inline'; ".
-               "img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'";
-
+        $csp = $this->buildCspHeader((string) $cdnBase, $nonce);
         $sri = $uiConfig['cdn']['sri'] ?? [];
 
         return response()
@@ -73,6 +68,16 @@ class LuminousController extends Controller
             ->header('X-Frame-Options', 'SAMEORIGIN')
             ->header('X-Content-Type-Options', 'nosniff')
             ->header('Content-Security-Policy', $csp);
+    }
+
+    private function buildCspHeader(string $cdnBase, string $nonce): string
+    {
+        $parsed = parse_url($cdnBase);
+        $cdnOrigin = isset($parsed['host']) ? (($parsed['scheme'] ?? 'https').'://'.$parsed['host']) : '';
+
+        return "default-src 'none'; script-src 'self' {$cdnOrigin} 'nonce-{$nonce}'; ".
+               "style-src 'self' {$cdnOrigin} 'unsafe-inline'; ".
+               "img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'";
     }
 
     private function getSpec(): array

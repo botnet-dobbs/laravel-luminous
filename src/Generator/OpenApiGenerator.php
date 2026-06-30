@@ -20,7 +20,7 @@ class OpenApiGenerator
         $this->registerSharedSchemas();
 
         $paths = [];
-        $rawTags = [];
+        $rawTagObjects = [];
         $seenOperationIds = [];
 
         foreach ($this->routeExtractor->extract() as $route) {
@@ -38,8 +38,11 @@ class OpenApiGenerator
                         $seenOperationIds[$id] = 1;
                     }
                 }
+                foreach ($operation['x-luminous-tags'] ?? [] as $tagObj) {
+                    $rawTagObjects[$tagObj['name']] = $tagObj;
+                }
+                unset($operation['x-luminous-tags']);
                 $paths[$route->path][$route->httpMethod] = $operation;
-                array_push($rawTags, ...($operation['tags'] ?? []));
             } catch (\Throwable $e) {
                 logger()->warning('Luminous: failed to extract route [{method} {path}]: {type}', [
                     'method' => $route->httpMethod,
@@ -51,9 +54,7 @@ class OpenApiGenerator
 
         $paths = collect($paths)->sortKeys()->all();
 
-        $tags = collect($rawTags)
-            ->unique()
-            ->map(fn ($name) => ['name' => $name])
+        $tags = collect($rawTagObjects)
             ->sortBy('name')
             ->values()
             ->all();

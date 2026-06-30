@@ -259,17 +259,9 @@ class TypeMapper
         // Rule objects (Rule::enum(), Rule::in(), etc.)
         foreach ($ruleObjects as $rule) {
             if ($rule instanceof Enum) {
-                try {
-                    // Iterate all properties instead of relying on a specific private property name
-                    foreach ((new \ReflectionObject($rule))->getProperties() as $prop) {
-                        $val = $prop->getValue($rule);
-                        if (is_string($val) && class_exists($val) && is_subclass_of($val, \BackedEnum::class)) {
-                            $schema['enum'] = collect($val::cases())->map(fn ($c) => $c->value)->all();
-                            break;
-                        }
-                    }
-                } catch (\Throwable) {
-                    // Silently skip. Rule::enum() internals may change
+                $enumClass = $this->enumExtractor->classFromRule($rule);
+                if ($enumClass !== null) {
+                    $schema['enum'] = collect($enumClass::cases())->map(fn ($c) => $c->value)->all();
                 }
             } elseif ($rule instanceof In) {
                 try {

@@ -125,7 +125,7 @@ final class Shape
      */
     public static function enum(string $enumClass): self
     {
-        return new self(['$ref' => $enumClass]);
+        return self::ref($enumClass);
     }
 
     public static function oneOf(array $shapes): self

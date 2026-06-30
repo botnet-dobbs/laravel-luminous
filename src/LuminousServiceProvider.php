@@ -29,7 +29,7 @@ class LuminousServiceProvider extends ServiceProvider
         $this->app->singleton(OpenApiGenerator::class, function ($app) {
             $config = $app['config']['luminous'];
             $registry = $app->make(ComponentsRegistry::class);
-            $routeExtractor = new RouteExtractor($config);
+            $routeExtractor = new RouteExtractor($config, $app['router']);
 
             $enumExtractor = new EnumExtractor;
             $typeMapper = new TypeMapper($enumExtractor);
