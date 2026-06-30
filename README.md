@@ -1,5 +1,7 @@
 # Luminous
 
+[![build](https://github.com/botnet-dobbs/laravel-luminous/actions/workflows/main.yml/badge.svg)](https://github.com/botnet-dobbs/laravel-luminous/actions/workflows/main.yml) ![Packagist Downloads](https://img.shields.io/packagist/dt/botnetdobbs/laravel-luminous)
+
 Generate OpenAPI 3.1 docs from PHP 8 Attributes on your Laravel controllers. The
 docs are the code, so they cannot drift.
 
@@ -8,12 +10,22 @@ controllers, let your FormRequest `rules()` define the request body, document yo
 API Resources with a single static `schema()` method, and Luminous builds the full spec
 automatically.
 
+## Requirements
+
+- PHP 8.2+
+
+| Laravel Version |
+|-----------------|
+| Laravel 11.x    |
+| Laravel 12.x    |
+| Laravel 13.x    |
+
 ---
 
 ## Installation
 
 ```bash
-composer require botnetdobbs/laravel-luminous
+composer require botnet-dobbs/laravel-luminous
 ```
 
 Publish the config file:
