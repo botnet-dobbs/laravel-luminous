@@ -9,6 +9,6 @@ final class ApiBody
         public readonly string $request,
         public readonly string $description = '',
         public readonly bool $required = true,
-        public readonly string $mediaType = 'application/json',
+        public readonly ?string $mediaType = null,
     ) {}
 }

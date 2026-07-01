@@ -78,8 +78,7 @@ trait ExtractsAnnotatedProperties
             // OpenAPI 3.2: nullable primitives use type array instead of nullable: true.
             // Guard empty schema (e.g. int|float union). Applying nullable to {} wrongly yields {type:[string,null]}.
             if ($nullable && ! empty($schema)) {
-                $type = $schema['type'] ?? 'string';
-                $schema['type'] = [$type, 'null'];
+                $schema = TypeMapper::applyNullable($schema);
             }
             if ($apiProp->minimum !== null) {
                 $schema['minimum'] = $apiProp->minimum;
@@ -128,7 +127,9 @@ trait ExtractsAnnotatedProperties
         ComponentsRegistry $registry,
         EnumExtractor $enumExtractor,
     ): string {
-        return $registry->register($class, $enumExtractor->extract($class));
+        $registry->register($class, $enumExtractor->extract($class));
+
+        return $registry->refFor($class);
     }
 
     private function resolveArrayItems(\ReflectionProperty $prop, ApiProperty $apiProp): array

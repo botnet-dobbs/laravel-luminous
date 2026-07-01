@@ -150,6 +150,32 @@ Leave it unset (the default) to omit the field entirely.
 
 ---
 
+## Shared schemas
+
+`shared_schemas` registers named schemas in `components.schemas` before any routes are
+processed. The default includes `ErrorResponse`, which is available as a `$ref` for
+any `#[ApiResponse]` that returns an error shape.
+
+```php
+'shared_schemas' => [
+    'ErrorResponse' => [
+        'type' => 'object',
+        'properties' => [
+            'code'       => ['type' => 'string'],
+            'message'    => ['type' => 'string'],
+            'request_id' => ['type' => 'string'],
+            'timestamp'  => ['type' => 'string', 'format' => 'date-time'],
+            'details'    => ['type' => 'object'],
+        ],
+    ],
+],
+```
+
+You can add your own schemas, override the defaults, or remove them by setting the
+entry to `null`. Any schema you add here is available as a `$ref` across your spec.
+
+---
+
 ## Security schemes
 
 Define your schemes here. They are referenced by name in `#[ApiSecurity]` attributes

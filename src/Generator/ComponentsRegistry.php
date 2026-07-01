@@ -14,7 +14,7 @@ class ComponentsRegistry
         $this->classIndex = [];
     }
 
-    public function register(string $class, array $schema): string
+    public function register(string $class, array $schema): void
     {
         $name = $this->toSchemaName($class);
 
@@ -26,8 +26,6 @@ class ComponentsRegistry
         if (! isset($this->classIndex[$class])) {
             $this->classIndex[$class] = $name;
         }
-
-        return "#/components/schemas/{$name}";
     }
 
     public function registerAnonymous(string $name, array $schema): string

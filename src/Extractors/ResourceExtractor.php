@@ -36,13 +36,13 @@ class ResourceExtractor
 
         // Pre-register a placeholder before building so that any recursive call
         // for this class hits isRegistered()=true above and breaks the cycle.
-        $ref = $this->registry->register($resourceClass, ['type' => 'object']);
+        $this->registry->register($resourceClass, ['type' => 'object']);
 
         $schema = $this->buildSchema($resourceClass);
 
         $this->registry->updateSchema($resourceClass, $schema);
 
-        return ['$ref' => $ref];
+        return ['$ref' => $this->registry->refFor($resourceClass)];
     }
 
     private function buildSchema(string $resourceClass): array

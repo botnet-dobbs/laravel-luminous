@@ -194,15 +194,18 @@ class SchemaExtractorsTest extends TestCase
 
         // Two classes with different FQCNs that share the same base name
         // Simulate by registering manually under a fake class path
-        $ref1 = $registry->register('App\\V1\\Payment', ['type' => 'object', 'properties' => ['id' => ['type' => 'string']]]);
-        $ref2 = $registry->register('App\\V2\\Payment', ['type' => 'object', 'properties' => ['id' => ['type' => 'integer']]]);
+        $registry->register('App\\V1\\Payment', ['type' => 'object', 'properties' => ['id' => ['type' => 'string']]]);
+        $registry->register('App\\V2\\Payment', ['type' => 'object', 'properties' => ['id' => ['type' => 'integer']]]);
 
         // Both must be registered in classIndex (isRegistered returns true for each)
         $this->assertTrue($registry->isRegistered('App\\V1\\Payment'));
         $this->assertTrue($registry->isRegistered('App\\V2\\Payment'));
 
-        // The returned refs must be different (second gets a namespace-qualified name)
-        $this->assertNotSame($ref1, $ref2);
+        // The refs must be different (second gets a namespace-qualified name)
+        $this->assertNotSame(
+            $registry->refFor('App\\V1\\Payment'),
+            $registry->refFor('App\\V2\\Payment')
+        );
     }
 
     public function test_union_type_property_does_not_crash(): void
@@ -515,9 +518,13 @@ class SchemaExtractorsTest extends TestCase
     {
         $registry = $this->makeRegistry();
 
-        $ref1 = $registry->register('App\Payment', ['type' => 'object', 'description' => 'p1']);
-        $ref2 = $registry->register('App\Order\Payment', ['type' => 'object', 'description' => 'p2']);
-        $ref3 = $registry->register('App\Refund\Order\Payment', ['type' => 'object', 'description' => 'p3']);
+        $registry->register('App\Payment', ['type' => 'object', 'description' => 'p1']);
+        $registry->register('App\Order\Payment', ['type' => 'object', 'description' => 'p2']);
+        $registry->register('App\Refund\Order\Payment', ['type' => 'object', 'description' => 'p3']);
+
+        $ref1 = $registry->refFor('App\Payment');
+        $ref2 = $registry->refFor('App\Order\Payment');
+        $ref3 = $registry->refFor('App\Refund\Order\Payment');
 
         $this->assertNotSame($ref1, $ref2, 'first and second ref must differ');
         $this->assertNotSame($ref1, $ref3, 'first and third ref must differ');

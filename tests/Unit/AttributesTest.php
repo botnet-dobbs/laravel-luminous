@@ -125,6 +125,13 @@ class AttributesTest extends TestCase
         $this->assertSame('multipart/form-data', $body->mediaType);
     }
 
+    public function test_api_body_media_type_defaults_to_null(): void
+    {
+        $body = new ApiBody('App\\Http\\Requests\\CreatePaymentRequest');
+
+        $this->assertNull($body->mediaType);
+    }
+
     public function test_api_param_constructor_round_trip(): void
     {
         $param = new ApiParam('id', 'Resource UUID', 'string', 'uuid', '550e8400');

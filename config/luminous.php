@@ -181,6 +181,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Shared Schemas
+    |--------------------------------------------------------------------------
+    |
+    | Named schemas registered in components.schemas before any routes are
+    | processed. Useful for error envelopes and other app-wide shapes that do
+    | not belong to a specific resource class.
+    |
+    | Override or extend by publishing the config and editing this array.
+    | Remove an entry by setting it to null. Add new entries as needed.
+    |
+    */
+    'shared_schemas' => [
+        'ErrorResponse' => [
+            'type' => 'object',
+            'properties' => [
+                'code' => ['type' => 'string'],
+                'message' => ['type' => 'string'],
+                'request_id' => ['type' => 'string'],
+                'timestamp' => ['type' => 'string', 'format' => 'date-time'],
+                'details' => ['type' => 'object'],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Document Identity ($self)
     |--------------------------------------------------------------------------
     |

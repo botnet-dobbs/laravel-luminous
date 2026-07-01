@@ -340,9 +340,7 @@ class ControllerExtractor
         if (! empty($bodyAttrs)) {
             $body = $bodyAttrs[0]->newInstance();
             $schema = $this->requestExtractor->extract($body->request);
-            $mediaType = $body->mediaType !== 'application/json'
-                ? $body->mediaType
-                : $this->requestExtractor->mediaType($body->request);
+            $mediaType = $body->mediaType ?? $this->requestExtractor->mediaType($body->request);
             $requestBody = [
                 'required' => $body->required,
                 'content' => [

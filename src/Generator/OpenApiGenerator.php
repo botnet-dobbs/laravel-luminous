@@ -118,16 +118,11 @@ class OpenApiGenerator
 
     private function registerSharedSchemas(): void
     {
-        $this->registry->registerAnonymous('ErrorResponse', [
-            'type' => 'object',
-            'properties' => [
-                'code' => ['type' => 'string'],
-                'message' => ['type' => 'string'],
-                'request_id' => ['type' => 'string'],
-                'timestamp' => ['type' => 'string', 'format' => 'date-time'],
-                'details' => ['type' => 'object'],
-            ],
-        ]);
+        foreach ($this->config['shared_schemas'] ?? [] as $name => $schema) {
+            if (is_array($schema)) {
+                $this->registry->registerAnonymous($name, $schema);
+            }
+        }
 
         if ($this->config['include_pagination_schema'] ?? true) {
             $this->registry->registerAnonymous('PaginationMeta', [

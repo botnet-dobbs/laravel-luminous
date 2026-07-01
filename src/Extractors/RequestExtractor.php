@@ -13,6 +13,8 @@ class RequestExtractor
 {
     use ExtractsAnnotatedProperties;
 
+    private const WILDCARD_ITEMS_KEY = '__items__';
+
     public function __construct(
         private readonly TypeMapper $typeMapper,
         private readonly ComponentsRegistry $registry,
@@ -30,9 +32,9 @@ class RequestExtractor
         }
 
         $schema = $this->buildSchema($requestClass);
-        $ref = $this->registry->register($requestClass, $schema);
+        $this->registry->register($requestClass, $schema);
 
-        return ['$ref' => $ref];
+        return ['$ref' => $this->registry->refFor($requestClass)];
     }
 
     /**
@@ -246,7 +248,7 @@ class RequestExtractor
                 } else {
                     // Simple wildcard like 'field.*'. Use a named sentinel key so we can tell later
                     // whether the items are scalars or objects, without relying on an empty string key.
-                    $wildcards[$parent]['__items__'] = $rules;
+                    $wildcards[$parent][self::WILDCARD_ITEMS_KEY] = $rules;
                 }
 
                 if (! isset($topLevel[$parent])) {
@@ -342,14 +344,14 @@ class RequestExtractor
             $schema['maxItems'] = $parentSchema['maxItems'];
         }
 
-        $isSimple = isset($childRules['__items__']);
+        $isSimple = isset($childRules[self::WILDCARD_ITEMS_KEY]);
 
         if ($isSimple || empty($childRules)) {
-            $itemRuleArray = $this->normaliseRules($childRules['__items__'] ?? []);
+            $itemRuleArray = $this->normaliseRules($childRules[self::WILDCARD_ITEMS_KEY] ?? []);
             $schema['items'] = $this->typeMapper->validationRulesToSchema($itemRuleArray) ?: ['type' => 'string'];
         } else {
             // Object wildcard. Build item schema from child rules (exclude the __items__ sentinel)
-            $objectRules = array_diff_key($childRules, ['__items__' => true]);
+            $objectRules = array_diff_key($childRules, [self::WILDCARD_ITEMS_KEY => true]);
             $schema['items'] = $this->buildNestedObjectSchema($objectRules, $depth + 1);
         }
 
@@ -430,7 +432,9 @@ class RequestExtractor
             }
             $class = $this->enumExtractor->classFromRule($rule);
             if ($class !== null) {
-                return $this->registry->register($class, $this->enumExtractor->extract($class));
+                $this->registry->register($class, $this->enumExtractor->extract($class));
+
+                return $this->registry->refFor($class);
             }
         }
 

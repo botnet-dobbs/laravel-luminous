@@ -42,6 +42,16 @@ class TypeMapper
         'double' => ['type' => 'number',  'format' => 'double'],
     ];
 
+    public static function applyNullable(array $schema): array
+    {
+        $type = $schema['type'] ?? 'string';
+        if (! is_array($type)) {
+            $schema['type'] = [$type, 'null'];
+        }
+
+        return $schema;
+    }
+
     public function phpTypeToOpenApi(string $phpType, ?string $format = null): array
     {
         if ($format && isset(self::FORMAT_MAP[$format])) {
@@ -284,10 +294,7 @@ class TypeMapper
         // OpenAPI 3.2: convert nullable sentinel to type array
         if (isset($schema['nullable'])) {
             unset($schema['nullable']);
-            $type = $schema['type'] ?? 'string';
-            if (! is_array($type)) {
-                $schema['type'] = [$type, 'null'];
-            }
+            $schema = self::applyNullable($schema);
         }
 
         return collect($schema)->filter(fn ($v) => $v !== [] && $v !== '')->all();
