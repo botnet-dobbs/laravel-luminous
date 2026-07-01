@@ -65,9 +65,8 @@ return [
     // Security scheme definitions. These go into components.securitySchemes.
     'security_schemes' => [],
 
-    // OpenAPI 3.2.0 $self field. Declares the canonical URL of this spec document.
-    // Leave null to omit the field.
-    'self_url' => env('LUMINOUS_SELF_URL', null),
+    // Canonical URL of this spec ($self). Defaults to APP_URL + LUMINOUS_PATH + /openapi.json.
+    'self_url' => env('APP_URL', 'http://localhost').'/'.env('LUMINOUS_PATH', 'docs').'/openapi.json',
 
     // Cache settings. Always enable caching in production.
     'cache' => [
@@ -138,15 +137,9 @@ switch between them.
 
 ## Document identity
 
-`self_url` sets the OpenAPI 3.2.0 `$self` field, which declares the canonical URL of
-your spec document. Most tools do not require it, but it helps with relative reference
-resolution in multi-file API descriptions.
+OAS 3.2 uses JSON Schema 2020-12 reference resolution. Without `$self`, resolvers fall back to the retrieval URI — the URL the document was fetched from. This breaks when the spec is served through a proxy, CDN, or any URL that differs from its canonical location. Setting `$self` makes `$ref` resolution deterministic regardless of how the document is retrieved.
 
-```env
-LUMINOUS_SELF_URL=https://api.example.com/docs/openapi.json
-```
-
-Leave it unset (the default) to omit the field entirely.
+Luminous defaults `$self` to your `APP_URL` + `LUMINOUS_PATH` + `/openapi.json`, so it stays correct as long as those two values are set. No extra configuration needed.
 
 ---
 

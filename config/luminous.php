@@ -207,15 +207,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Document Identity ($self)
+    | Self URL ($self)
     |--------------------------------------------------------------------------
     |
-    | OpenAPI 3.2.0 top-level $self field. Declares the canonical URI of this
-    | document, which clarifies relative reference resolution in multi-file
-    | descriptions. Leave null to omit the field.
+    | OAS 3.2 uses JSON Schema 2020-12 reference resolution. Without $self,
+    | resolvers fall back to the retrieval URI, which breaks when the spec is
+    | fetched from a proxy, CDN, or any URL that differs from where it lives.
+    | Setting $self makes $ref resolution deterministic regardless of how the
+    | document is retrieved.
+    |
+    | Defaults to your APP_URL + LUMINOUS_PATH + /openapi.json so it stays
+    | correct as long as those two values are set.
     |
     */
-    'self_url' => env('LUMINOUS_SELF_URL', null),
+    'self_url' => env('APP_URL', 'http://localhost').'/'.env('LUMINOUS_PATH', 'docs').'/openapi.json',
 
     /*
     |--------------------------------------------------------------------------
