@@ -1,6 +1,16 @@
 {
     "name": "botnetdobbs/laravel-luminous",
     "description": "PHP 8 Attribute-driven OpenAPI 3.2 documentation for Laravel",
+    "keywords": [
+        "laravel",
+        "openapi",
+        "swagger",
+        "api-documentation",
+        "php8-attributes",
+        "openapi-3.2",
+        "laravel-package",
+        "rest-api"
+    ],
     "type": "library",
     "license": "MIT",
     "require": {

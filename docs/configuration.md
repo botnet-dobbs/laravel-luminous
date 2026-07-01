@@ -169,6 +169,25 @@ entry to `null`. Any schema you add here is available as a `$ref` across your sp
 
 ---
 
+## Middleware and access control
+
+Luminous only serves the spec. Rate limiting, authentication, and any other access
+controls are standard Laravel middleware and are your responsibility to configure
+via `LUMINOUS_MIDDLEWARE`.
+
+```env
+# Require Sanctum authentication
+LUMINOUS_MIDDLEWARE=auth:sanctum
+
+# Require auth and throttle to 60 requests per minute
+LUMINOUS_MIDDLEWARE=auth:sanctum|throttle:60,1
+```
+
+Use `|` as the delimiter between middleware, not commas. Commas appear inside
+middleware parameters like `throttle:60,1` and would split them into invalid names.
+
+---
+
 ## Security schemes
 
 Define your schemes here. They are referenced by name in `#[ApiSecurity]` attributes
@@ -188,3 +207,19 @@ on your controllers. See [Security](security.md) for full details.
     ],
 ],
 ```
+
+---
+
+## Hiding the Schemas section
+
+Swagger UI shows a Schemas section at the bottom of the page listing all your component schemas. For public-facing APIs you may want to hide this.
+
+Set `default_models_expand_depth` to `-1` in your config:
+
+```php
+'ui' => [
+    'default_models_expand_depth' => -1,
+],
+```
+
+The schemas are still present in the JSON spec (they are needed for request and response documentation to work), but the Schemas accordion will not appear in the UI.

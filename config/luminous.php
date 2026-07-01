@@ -259,6 +259,8 @@ return [
     'ui' => [
         'persist_authorization' => true,
         'display_request_duration' => true,
+        // How many levels deep to expand schemas in the Schemas section.
+        // Set to -1 to hide the Schemas section entirely. Useful for public-facing APIs.
         'default_models_expand_depth' => 1,
         'syntax_highlight_theme' => 'monokai',
         'try_it_out_enabled' => true,
