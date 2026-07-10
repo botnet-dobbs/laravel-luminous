@@ -19,6 +19,7 @@ use Botnetdobbs\Luminous\Attributes\ApiSecurity;
 use Botnetdobbs\Luminous\Attributes\ApiStream;
 use Botnetdobbs\Luminous\Attributes\ApiTag;
 use Botnetdobbs\Luminous\Tests\Fixtures\Controllers\TestAttributeController;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class AttributesTest extends TestCase
@@ -144,32 +145,20 @@ class AttributesTest extends TestCase
         $this->assertSame('550e8400', $param->example);
     }
 
-    public function test_api_param_deprecated_defaults_to_false(): void
+    public static function deprecatedFieldProvider(): array
     {
-        $param = new ApiParam('id');
-
-        $this->assertFalse($param->deprecated);
+        return [
+            'ApiParam defaults to false' => [new ApiParam('id'), false],
+            'ApiParam accepts true'      => [new ApiParam('id', deprecated: true), true],
+            'ApiQuery defaults to false' => [new ApiQuery('page'), false],
+            'ApiQuery accepts true'      => [new ApiQuery('legacyFilter', deprecated: true), true],
+        ];
     }
 
-    public function test_api_param_deprecated_accepts_true(): void
+    #[DataProvider('deprecatedFieldProvider')]
+    public function test_deprecated_field_defaults_and_accepts_true(object $attr, bool $expected): void
     {
-        $param = new ApiParam('id', deprecated: true);
-
-        $this->assertTrue($param->deprecated);
-    }
-
-    public function test_api_query_deprecated_defaults_to_false(): void
-    {
-        $query = new ApiQuery('page');
-
-        $this->assertFalse($query->deprecated);
-    }
-
-    public function test_api_query_deprecated_accepts_true(): void
-    {
-        $query = new ApiQuery('legacyFilter', deprecated: true);
-
-        $this->assertTrue($query->deprecated);
+        $this->assertSame($expected, $attr->deprecated);
     }
 
     public function test_api_items_constructor_round_trip(): void
@@ -275,28 +264,21 @@ class AttributesTest extends TestCase
         $this->assertSame('querystring', $query->location);
     }
 
-    public function test_api_example_data_value_with_non_empty_value_throws(): void
+    public static function apiExampleMutualExclusionProvider(): array
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('mutually exclusive');
-
-        new ApiExample('ex', value: ['key' => 'val'], dataValue: ['key' => 'val']);
+        return [
+            'value and dataValue'          => [fn () => new ApiExample('ex', value: ['key' => 'val'], dataValue: ['key' => 'val'])],
+            'value and serializedValue'    => [fn () => new ApiExample('ex', value: 'raw', serializedValue: 'raw')],
+            'serializedValue and external' => [fn () => new ApiExample('ex', externalValue: 'https://example.com/ex.json', serializedValue: 'raw')],
+        ];
     }
 
-    public function test_api_example_serialized_value_with_non_empty_value_throws(): void
+    #[DataProvider('apiExampleMutualExclusionProvider')]
+    public function test_api_example_mutually_exclusive_fields_throw(\Closure $factory): void
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('mutually exclusive');
-
-        new ApiExample('ex', value: 'raw', serializedValue: 'raw');
-    }
-
-    public function test_api_example_serialized_value_with_external_value_throws(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('mutually exclusive');
-
-        new ApiExample('ex', externalValue: 'https://example.com/ex.json', serializedValue: 'raw');
+        $factory();
     }
 
     public function test_api_example_external_value_emitted_in_to_example_object(): void
@@ -368,12 +350,20 @@ class AttributesTest extends TestCase
         $this->assertSame('', $tag->externalDocsDescription);
     }
 
-    public function test_api_query_style_defaults_to_null(): void
+    public static function styleExplodeNullDefaultProvider(): array
     {
-        $query = new ApiQuery('filter');
+        return [
+            'ApiQuery'  => [new ApiQuery('filter')],
+            'ApiParam'  => [new ApiParam('id')],
+            'ApiHeader' => [new ApiHeader('X-Trace')],
+        ];
+    }
 
-        $this->assertNull($query->style);
-        $this->assertNull($query->explode);
+    #[DataProvider('styleExplodeNullDefaultProvider')]
+    public function test_style_and_explode_default_to_null(object $attr): void
+    {
+        $this->assertNull($attr->style);
+        $this->assertNull($attr->explode);
     }
 
     public function test_api_query_style_and_explode_round_trip(): void
@@ -384,28 +374,12 @@ class AttributesTest extends TestCase
         $this->assertTrue($query->explode);
     }
 
-    public function test_api_param_style_defaults_to_null(): void
-    {
-        $param = new ApiParam('id');
-
-        $this->assertNull($param->style);
-        $this->assertNull($param->explode);
-    }
-
     public function test_api_param_style_and_explode_round_trip(): void
     {
         $param = new ApiParam('slug', style: 'label', explode: false);
 
         $this->assertSame('label', $param->style);
         $this->assertFalse($param->explode);
-    }
-
-    public function test_api_header_style_defaults_to_null(): void
-    {
-        $header = new ApiHeader('X-Trace');
-
-        $this->assertNull($header->style);
-        $this->assertNull($header->explode);
     }
 
     public function test_api_header_style_and_explode_round_trip(): void

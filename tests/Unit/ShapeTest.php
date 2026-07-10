@@ -4,23 +4,24 @@ namespace Botnetdobbs\Luminous\Tests\Unit;
 
 use Botnetdobbs\Luminous\Support\Shape;
 use Botnetdobbs\Luminous\Tests\Fixtures\Enums\PaymentStatus;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ShapeTest extends TestCase
 {
-    public function test_primitive_string_produces_correct_schema(): void
+    public static function primitiveTypeProvider(): array
     {
-        $this->assertSame(['type' => 'string'], Shape::string()->toArray());
+        return [
+            'string'  => [Shape::string(),  ['type' => 'string']],
+            'integer' => [Shape::integer(), ['type' => 'integer']],
+            'boolean' => [Shape::boolean(), ['type' => 'boolean']],
+        ];
     }
 
-    public function test_primitive_integer_produces_correct_schema(): void
+    #[DataProvider('primitiveTypeProvider')]
+    public function test_primitive_type_produces_correct_schema(Shape $shape, array $expected): void
     {
-        $this->assertSame(['type' => 'integer'], Shape::integer()->toArray());
-    }
-
-    public function test_primitive_boolean_produces_correct_schema(): void
-    {
-        $this->assertSame(['type' => 'boolean'], Shape::boolean()->toArray());
+        $this->assertSame($expected, $shape->toArray());
     }
 
     public function test_format_shortcuts_produce_correct_schemas(): void
@@ -122,25 +123,19 @@ class ShapeTest extends TestCase
         $this->assertNotContains('optional_and_nullable', $schema['required']);
     }
 
-    public function test_read_only_modifier(): void
+    public static function booleanModifierProvider(): array
     {
-        $schema = Shape::string()->readOnly()->toArray();
-
-        $this->assertTrue($schema['readOnly']);
+        return [
+            'readOnly'   => [Shape::string()->readOnly(),   'readOnly'],
+            'writeOnly'  => [Shape::string()->writeOnly(),  'writeOnly'],
+            'deprecated' => [Shape::string()->deprecated(), 'deprecated'],
+        ];
     }
 
-    public function test_write_only_modifier(): void
+    #[DataProvider('booleanModifierProvider')]
+    public function test_boolean_modifier_sets_flag(Shape $shape, string $key): void
     {
-        $schema = Shape::string()->writeOnly()->toArray();
-
-        $this->assertTrue($schema['writeOnly']);
-    }
-
-    public function test_deprecated_modifier(): void
-    {
-        $schema = Shape::string()->deprecated()->toArray();
-
-        $this->assertTrue($schema['deprecated']);
+        $this->assertTrue($shape->toArray()[$key]);
     }
 
     public function test_description_and_example_modifiers(): void
